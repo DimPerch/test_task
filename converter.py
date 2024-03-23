@@ -4,26 +4,56 @@ import xml.etree.ElementTree as ET
 
 
 class Converter:
+
     @staticmethod
     def xml_to_json(xml_string):
-        xml_dict = xmltodict.parse(xml_string)
-        json_data = json.dumps(xml_dict)
-        return json_data
+        """
+        Converts an XML string to JSON format string.
+
+            Parameters:
+                xml_string (str): The XML string to convert to JSON.
+
+            Returns:
+                str: The JSON string containing the equivalent XML data."""
+
+        def _element_to_dict(element):
+            result = {}
+            for child in element:
+                if child:
+                    result[child.tag] = _element_to_dict(child)
+                else:
+                    result[child.tag] = child.text
+            return result
+
+        root = ET.fromstring(xml_string)
+        return _element_to_dict(root)
 
     @staticmethod
     def json_to_xml(json_data):
-        def build_xml(parent, data):
-            if isinstance(data, dict):
-                for key, value in data.items():
-                    if isinstance(value, (dict, list)):
-                        child = ET.SubElement(parent, key)
-                        build_xml(child, value)
-                    else:
-                        ET.SubElement(parent, key).text = str(value)
-            elif isinstance(data, list):
-                for item in data:
-                    build_xml(parent, item)
+        """
+        Converts JSON data to an XML string.
 
-        root = ET.Element('root')
-        build_xml(root, json_data)
+        Parameters:
+            json_data (dict): The JSON string to convert to XML.
+
+        Returns:
+            str: The XML string containing the equivalent JSON data.
+        """
+        def _dict_to_xml(element, dictionary):
+            for key, value in dictionary.items():
+                if isinstance(value, dict):
+                    sub_element = ET.SubElement(element, key)
+                    _dict_to_xml(sub_element, value)
+                else:
+                    ET.SubElement(element, key).text = str(value)
+        if json_data["passport_type_id"] == 1:
+            data = {"SubdivisionCode": json_data["passport_org_code"],
+                    "IdOksm": json_data["residence_country_id"],
+                    "Surname": json_data["second_name"],
+                    "Name": json_data["first_name"],
+                    "Patronymic": json_data["middle_name"]}
+        else:
+            data = {}
+        root = ET.Element("PackageData")
+        _dict_to_xml(root, data)
         return ET.tostring(root, encoding='utf-8', method='xml').decode('utf-8')
